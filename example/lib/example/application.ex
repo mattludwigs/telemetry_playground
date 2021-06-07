@@ -9,6 +9,7 @@ defmodule Example.Application do
 
   @impl true
   def start(_type, _args) do
+    # define what meterics we want to track
     metrics = [
       Metrics.counter("playground.switch.value", tags: [:state]),
       Metrics.last_value("playground.switch.value")

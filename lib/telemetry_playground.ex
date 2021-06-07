@@ -1,6 +1,6 @@
 defmodule TelemetryPlayground do
   @moduledoc """
-  An example reporter implemenation
+  An example reporter for telemetry playground
 
   See https://hexdocs.pm/telemetry_metrics/writing_reporters.html for more
   information.
