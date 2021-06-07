@@ -1,155 +1,79 @@
 defmodule TelemetryPlayground do
   @moduledoc """
-  Telemetry is made up of a few items:
+  An example reporter implemenation
 
-  1. Telemetry events
-  2. Handlers
-  3. Metrics
-  4. Reporters
-  5. Aggregator service
-
-  ## Telemetry Events
-
-  These are discrete measurements under some namespace, better known as an
-  event. These provide not additional information in regards to meaning other
-  than something happened and some data as to measure what happend.
-
-  ## Handlers
-
-  Handlers are functions that allow the consumer of a telemetry API to do
-  something with the event. You attach handlers via the `:telemetry.attach/4`
-  or `:telemetry.attach_many/4` function calls.
-
-  ## Metrics
-
-  Using the library `:telemetry_metrics` we are provided with a community
-  specification of metrics. There are five:
-
-  1. Counter - keep a count of a some event
-  2. Sum - total sum of some measurement
-  3. Last Value - the last value of some event measurement
-  4. Summary - a generalized metrics for doing statisticial summaries
-  5. Distrubtion - a way to bucket event measuresments
-
-  An important note about metetrics is that these do nothing by themselves.
-  They are only a common interface (provided as structs) for reporters to
-  handle.
-
-  ## Reporters
-
-  Reporters are modules that adhere to the reporter specification outlined in
-  `:telemetry_metrics`. Their job is to take a list of metrics to listen for
-  and when an event happens to take the metric and report to some aggregation
-  service. This service can be the filesystem, a GenServer, a cloud server, a
-  local server, another program, or whatever. Normally, a reporter will take
-  in the metric and translate it to the serivce API. Reporters do not need to
-  support every metric.
-
-  ## Aggregator service
-
-  This is the peice of software that has an API for the report to send
-  information to and allows a user to visualize telemetry meterics in
-  some form. A service is supported through a specific telemetry reporter.
-
-  ## Events for this module
-
-  Event: [:playground, :switch, :state]
-  Measurement: non_neg_integer()
-  Metadata: %{}
-  Description: Event for when a dimmer switch changes
-
-
-  ## Example
-
-  ```elixir
-  iex(1)> TelemetryPlayground.start_reporter
-  {:ok, #PID<0.201.0>}
-  iex(2)> TelemetryPlayground.switch_change_to 0
-  :ok
-  iex(3)> TelemetryPlayground.switch_change_to 45
-  :ok
-  iex(4)> TelemetryPlayground.Aggregator.last_value
-  45
-  iex(5)> TelemetryPlayground.Aggregator.count
-  :off    1
-  :on     1
-  :ok
-  iex(6)> TelemetryPlayground.switch_change_to 0
-  :ok
-  iex(7)> TelemetryPlayground.Aggregator.count
-  :off    2
-  :on     1
-  :ok
-  iex(8)> TelemetryPlayground.Aggregator.count :on
-  :on     1
-
-  :ok
-  iex(9)> TelemetryPlayground.Aggregator.last_value
-  0
-  ```
+  See https://hexdocs.pm/telemetry_metrics/writing_reporters.html for more
+  information.
   """
 
+  use GenServer
   require Logger
-
-  alias Telemetry.Metrics
-  alias TelemetryPlayground.Reporter
+  alias TelemetryPlayground.Aggregator
 
   @doc """
-  Execute the telemetry switch state change event
+  Start the reporter
   """
-  @spec switch_change_to(non_neg_integer()) :: :ok
-  def switch_change_to(value) do
-    state_value =
-      cond do
-        value == 0 -> :off
-        true -> :on
+  def start_link(metrics) do
+    GenServer.start_link(__MODULE__, metrics)
+  end
+
+  @impl GenServer
+  def init(metrics) do
+    # For this example just going to start and link these two
+    # processes together, won't do that in a real application
+    {:ok, _pid} = Aggregator.start_link([])
+
+    # for the next part see https://hexdocs.pm/telemetry_metrics/writing_reporters.html#attaching-event-handlers
+    # for more information
+    groups = Enum.group_by(metrics, & &1.event_name)
+
+    for {event, metrics} <- groups do
+      id = {__MODULE__, event, self()}
+      :telemetry.attach(id, event, &handle_event/4, metrics)
+    end
+
+    {:ok, Map.keys(groups)}
+  end
+
+  def handle_event(_event, measurements, metadata, metrics) do
+    # for the next part see: https://hexdocs.pm/telemetry_metrics/writing_reporters.html#reacting-to-events
+    # for more information
+    for metric <- metrics do
+      try do
+        if measurement = keep?(metric, metadata) && extract_measurement(metric, measurements) do
+          tags = extract_tags(metric, metadata)
+
+          Aggregator.report_metric(metric, measurement, tags)
+        end
+      rescue
+        e ->
+          Logger.error("Could not format metric #{inspect(metric)}")
+          Logger.error(Exception.format(:error, e, __STACKTRACE__))
       end
-
-    :telemetry.execute(
-      [:playground, :switch],
-      %{value: value},
-      %{state: state_value}
-    )
+    end
   end
 
-  @doc """
-  Attach to the switch state event and log to the console
+  defp keep?(%{keep: keep}, metadata) when keep != nil, do: keep.(metadata)
+  defp keep?(_metric, _metadata), do: true
 
-  This is to illustrate the basic way of attaching to telemetry events. This
-  does not involve specfic metrics but only handles the raw information about
-  the event.
-  """
-  @spec attach_console_basic() :: :ok
-  def attach_console_basic() do
-    :telemetry.attach(
-      "switch-change-handler",
-      [:playground, :switch],
-      &handle_event/4,
-      []
-    )
+  defp extract_measurement(metric, measurements) do
+    case metric.measurement do
+      fun when is_function(fun, 1) -> fun.(measurements)
+      key -> measurements[key]
+    end
   end
 
-  defp handle_event(event, measurement, metadata, config) do
-    Logger.info("========== EVENT ==========")
-    Logger.info("Name: #{inspect(event)}")
-    Logger.info("Measuremnt: #{inspect(measurement)}")
-    Logger.info("Metadta: #{inspect(metadata)}")
-    Logger.info("Config: #{inspect(config)}")
+  defp extract_tags(metric, metadata) do
+    tag_values = metric.tag_values.(metadata)
+    Map.take(tag_values, metric.tags)
   end
 
-  @doc """
-  Start the reporter (and also starts `TelemetryPlayground.Aggregator`)
-  """
-  def start_reporter() do
-    # Metric names follow this pattern:
-    # "playground.switch.value"
-    # where "playground.switch" is the telemetry event name
-    # where "value" is the measurement you want to turn into a metric
-    metrics = [
-      Metrics.counter("playground.switch.value", tags: [:state]),
-      Metrics.last_value("playground.switch.value")
-    ]
+  @impl GenServer
+  def terminate(_, events) do
+    for event <- events do
+      :telemetry.detach({__MODULE__, event, self()})
+    end
 
-    Reporter.start_link(metrics)
+    :ok
   end
 end
