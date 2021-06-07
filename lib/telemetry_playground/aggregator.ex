@@ -30,20 +30,35 @@ defmodule TelemetryPlayground.Aggregator do
     GenServer.call(__MODULE__, {:count, tag})
   end
 
+  @doc """
+  Dump the metric log
+  """
+  def dump() do
+    GenServer.call(__MODULE__, :dump)
+  end
+
   @impl GenServer
   def init(_args) do
-    {:ok, %{counters: %{}, last_value: nil}}
+    # 250 is just the first number that poped into my head
+    # also not sure that the buffer should live in the aggregator but this
+    # is only for example purposes only.
+    # this buffer as very little strucuture and can be improved to better handle
+    # the different supported metric types.
+    buffer = CircularBuffer.new(250)
+    {:ok, %{counters: %{}, last_value: nil, buffer: buffer}}
   end
 
   @impl GenServer
-  def handle_call({:metric, %Counter{}, _measurement, tags}, _from, state) do
+  def handle_call({:metric, %Counter{}, _measurement, tags} = metric, _from, state) do
     # Hardcoding things but can be made more generic
     new_counters = Map.update(state.counters, tags.state, 1, fn n -> n + 1 end)
-    {:reply, :ok, %{state | counters: new_counters}}
+    buffer = CircularBuffer.insert(state.buffer, metric)
+    {:reply, :ok, %{state | counters: new_counters, buffer: buffer}}
   end
 
-  def handle_call({:metric, %LastValue{}, measurement, _tags}, _from, state) do
-    {:reply, :ok, %{state | last_value: measurement}}
+  def handle_call({:metric, %LastValue{}, measurement, _tags} = metric, _from, state) do
+    buffer = CircularBuffer.insert(state.buffer, metric)
+    {:reply, :ok, %{state | last_value: measurement, buffer: buffer}}
   end
 
   def handle_call({:count, tag}, _from, state) do
@@ -62,6 +77,10 @@ defmodule TelemetryPlayground.Aggregator do
     end
 
     {:reply, :ok, state}
+  end
+
+  def handle_call(:dump, _from, state) do
+    {:reply, CircularBuffer.to_list(state.buffer), state}
   end
 
   def handle_call(:last_value, _from, state) do

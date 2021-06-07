@@ -22,7 +22,8 @@ defmodule TelemetryPlayground.MixProject do
   defp deps do
     [
       {:telemetry, "~> 0.4.3"},
-      {:telemetry_metrics, "~> 0.6.0"}
+      {:telemetry_metrics, "~> 0.6.0"},
+      {:circular_buffer, "~> 0.4.0"}
     ]
   end
 end
