@@ -2,26 +2,28 @@ defmodule TelemetryPlayground do
   @moduledoc """
   An example reporter for telemetry playground
 
+  This is an ETS reporter
+
   See https://hexdocs.pm/telemetry_metrics/writing_reporters.html for more
   information.
   """
 
   use GenServer
   require Logger
-  alias TelemetryPlayground.Aggregator
 
   @doc """
   Start the reporter
   """
   def start_link(metrics) do
-    GenServer.start_link(__MODULE__, metrics)
+    GenServer.start_link(__MODULE__, metrics, name: __MODULE__)
   end
 
   @impl GenServer
   def init(metrics) do
-    # For this example just going to start and link these two
-    # processes together, won't do that in a real application
-    {:ok, _pid} = Aggregator.start_link([])
+    # Named table so that the scrapper can read the contents without
+    # making a call to this genserver.... not sure if that is okay yet
+    # as any process can now access this table.
+    _ = :ets.new(__MODULE__, [:duplicate_bag, :named_table])
 
     # for the next part see https://hexdocs.pm/telemetry_metrics/writing_reporters.html#attaching-event-handlers
     # for more information
@@ -32,7 +34,17 @@ defmodule TelemetryPlayground do
       :telemetry.attach(id, event, &handle_event/4, metrics)
     end
 
-    {:ok, Map.keys(groups)}
+    {:ok, %{groups: groups}}
+  end
+
+  @impl GenServer
+  def handle_call({:insert_metric, metric_record}, _from, state) do
+    # We have to call into this process to insert into the ets table
+    # if the table is access permission is set to `:protected`
+
+    :ets.insert(__MODULE__, metric_record)
+
+    {:reply, :ok, state}
   end
 
   def handle_event(_event, measurements, metadata, metrics) do
@@ -43,7 +55,9 @@ defmodule TelemetryPlayground do
         if measurement = keep?(metric, metadata) && extract_measurement(metric, measurements) do
           tags = extract_tags(metric, metadata)
 
-          Aggregator.report_metric(metric, measurement, tags)
+          # Since the table is `:protected` only the owning process can write
+          # to it, so we call in the GenServer for now.
+          GenServer.call(__MODULE__, {:insert_metric, {metric, measurement, tags}})
         end
       rescue
         e ->
@@ -69,9 +83,9 @@ defmodule TelemetryPlayground do
   end
 
   @impl GenServer
-  def terminate(_, events) do
-    for event <- events do
-      :telemetry.detach({__MODULE__, event, self()})
+  def terminate(_, state) do
+    for group <- state.groups do
+      :telemetry.detach({__MODULE__, group, self()})
     end
 
     :ok
