@@ -11,8 +11,11 @@ defmodule Example.Application do
   def start(_type, _args) do
     # define what meterics we want to track
     metrics = [
-      Metrics.counter("playground.switch.value", tags: [:state]),
-      Metrics.last_value("playground.switch.value")
+      Metrics.counter("playground.switch.count", tags: [:state]),
+      # Metrics.last_value("playground.switch.value"),
+
+      Metrics.counter("playground.connectivity.count", tags: [:ifname, :connectivity]),
+      Metrics.last_value("playground.connectivity.last_value", measurement: &connectivity_value/2, tags: [:ifname])
     ]
 
     children = [
@@ -24,4 +27,6 @@ defmodule Example.Application do
     opts = [strategy: :one_for_one, name: Example.Supervisor]
     Supervisor.start_link(children, opts)
   end
+
+  defp connectivity_value(_measurement, %{connectivity: conn}), do: conn
 end

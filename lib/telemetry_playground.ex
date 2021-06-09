@@ -11,6 +11,9 @@ defmodule TelemetryPlayground do
   use GenServer
   require Logger
 
+  alias Telemetry.Metrics.{Counter, LastValue}
+  alias TelemetryPlayground.Store
+
   @doc """
   Start the reporter
   """
@@ -23,7 +26,7 @@ defmodule TelemetryPlayground do
     # Named table so that the scrapper can read the contents without
     # making a call to this genserver.... not sure if that is okay yet
     # as any process can now access this table.
-    _ = :ets.new(__MODULE__, [:duplicate_bag, :named_table])
+    Store.new()
 
     # for the next part see https://hexdocs.pm/telemetry_metrics/writing_reporters.html#attaching-event-handlers
     # for more information
@@ -38,11 +41,16 @@ defmodule TelemetryPlayground do
   end
 
   @impl GenServer
-  def handle_call({:insert_metric, metric_record}, _from, state) do
+  def handle_call({:handle_metric, {%Counter{} = counter, _measurement, tags}}, _from, state) do
     # We have to call into this process to insert into the ets table
     # if the table is access permission is set to `:protected`
+    Store.inc(counter.event_name, tags)
 
-    :ets.insert(__MODULE__, metric_record)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:handle_metric, {%LastValue{} = metric, measurement, tags}}, _from, state) do
+    Store.last_value(metric.event_name, tags, measurement)
 
     {:reply, :ok, state}
   end
@@ -52,12 +60,12 @@ defmodule TelemetryPlayground do
     # for more information
     for metric <- metrics do
       try do
-        if measurement = keep?(metric, metadata) && extract_measurement(metric, measurements) do
+        if value = keep?(metric, metadata) && extract_measurement(metric, measurements, metadata) do
           tags = extract_tags(metric, metadata)
 
           # Since the table is `:protected` only the owning process can write
           # to it, so we call in the GenServer for now.
-          GenServer.call(__MODULE__, {:insert_metric, {metric, measurement, tags}})
+          GenServer.call(__MODULE__, {:handle_metric, {metric, value, tags}})
         end
       rescue
         e ->
@@ -70,9 +78,24 @@ defmodule TelemetryPlayground do
   defp keep?(%{keep: keep}, metadata) when keep != nil, do: keep.(metadata)
   defp keep?(_metric, _metadata), do: true
 
-  defp extract_measurement(metric, measurements) do
+  defp extract_measurement(%Counter{} = metric, measurements, metadata) do
+    case get_measurement(metric, measurements, metadata) do
+      nil ->
+        1
+
+      measurement ->
+        measurement
+    end
+  end
+
+  defp extract_measurement(metric, measurements, metadata) do
+    get_measurement(metric, measurements, metadata)
+  end
+
+  defp get_measurement(metric, measurements, metadata) do
     case metric.measurement do
       fun when is_function(fun, 1) -> fun.(measurements)
+      fun when is_function(fun, 2) -> fun.(measurements, metadata)
       key -> measurements[key]
     end
   end

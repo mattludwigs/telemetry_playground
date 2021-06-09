@@ -27,4 +27,16 @@ defmodule Example do
       %{state: state_value}
     )
   end
+
+  @doc """
+  Execute a telemetry event in regards to connectivity change
+  """
+  @spec lte_connectivity(:disconnected | :lan | :internet) :: :ok
+  def lte_connectivity(connectivity) do
+    :telemetry.execute(
+      [:playground, :connectivity],
+      %{system_time: :erlang.system_time()},
+      %{ifname: "wwan0", connectivity: connectivity}
+    )
+  end
 end
