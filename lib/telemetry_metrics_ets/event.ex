@@ -17,7 +17,7 @@ defmodule TelemetryMetricsETS.Event do
   end
 
   def handle_metric(%LastValue{} = metric, value, tags) do
-    key = make_key(:counter, metric.name, tags)
+    key = make_key(:last_value, metric.name, tags)
 
     :ets.insert(:table, {key, value})
   end

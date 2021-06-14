@@ -9,7 +9,7 @@ defmodule TelemetryMetricsETS do
     _ = :ets.new(:table, [:named_table, :public, :set])
 
     children = [
-      {TelemetryMetricsETS.Buffer, []},
+      {TelemetryMetricsETS.Buffer, args},
       {TelemetryMetricsETS.Reporter, args}
     ]
 

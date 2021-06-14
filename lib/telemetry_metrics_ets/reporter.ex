@@ -30,6 +30,10 @@ defmodule TelemetryMetricsETS.Reporter do
 
   @impl GenServer
   def handle_info(:poll, state) do
+    :table
+    |> :ets.tab2list()
+    |> Buffer.insert_metrics()
+
     {:noreply, poll(state)}
   end
 end
