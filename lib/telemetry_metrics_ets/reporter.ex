@@ -1,6 +1,6 @@
 defmodule TelemetryMetricsETS.Reporter do
   use GenServer
-  alias TelemetryMetricsETS.{Buffer, Event}
+  alias TelemetryMetricsETS.{Buffer, Event, Table}
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(args) do
@@ -30,9 +30,7 @@ defmodule TelemetryMetricsETS.Reporter do
 
   @impl GenServer
   def handle_info(:poll, state) do
-    :table
-    |> :ets.tab2list()
-    |> Buffer.insert_metrics()
+    Buffer.insert_metrics(Table.to_list())
 
     {:noreply, poll(state)}
   end

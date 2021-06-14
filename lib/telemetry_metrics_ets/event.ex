@@ -3,28 +3,7 @@ defmodule TelemetryMetricsETS.Event do
   # as we can test things better
   require Logger
   alias Telemetry.Metrics.{Counter, LastValue}
-
-  def handle_metric(%Counter{} = metric, _, tags) do
-    key = make_key(:counter, metric.name, tags)
-
-    # the counter value is located in the second positon of the tuple record
-    count_position = 2
-
-    # deafult value for the counter is 0
-    default_spec = {count_position, 0}
-
-    :ets.update_counter(:table, key, {count_position, 1}, default_spec)
-  end
-
-  def handle_metric(%LastValue{} = metric, value, tags) do
-    key = make_key(:last_value, metric.name, tags)
-
-    :ets.insert(:table, {key, value})
-  end
-
-  defp make_key(type, name, tags) do
-    {type, name, tags}
-  end
+  alias TelemetryMetricsETS.Table
 
   @doc """
   Handle a telemetry event
@@ -37,7 +16,7 @@ defmodule TelemetryMetricsETS.Event do
         if value = keep?(metric, metadata) && extract_measurement(metric, measurements, metadata) do
           tags = extract_tags(metric, metadata)
 
-          handle_metric(metric, value, tags)
+          Table.insert_metric(metric, value, tags)
         end
       rescue
         e ->

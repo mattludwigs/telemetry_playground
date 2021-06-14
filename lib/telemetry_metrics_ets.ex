@@ -6,7 +6,7 @@ defmodule TelemetryMetricsETS do
   end
 
   def init(args) do
-    _ = :ets.new(:table, [:named_table, :public, :set])
+    _ = TelemetryMetricsETS.Table.init()
 
     children = [
       {TelemetryMetricsETS.Buffer, args},
