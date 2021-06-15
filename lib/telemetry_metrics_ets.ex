@@ -6,10 +6,9 @@ defmodule TelemetryMetricsETS do
   end
 
   def init(args) do
-    _ = TelemetryMetricsETS.Table.init()
-
     children = [
       {TelemetryMetricsETS.Buffer, args},
+      {TelemetryMetricsETS.Table, args},
       {TelemetryMetricsETS.Reporter, args}
     ]
 
