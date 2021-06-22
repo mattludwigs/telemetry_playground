@@ -3,6 +3,10 @@ defmodule TelemetryMetricsETS.Table do
 
   # module for handling common ETS table funcationlity
 
+  defmodule Report do
+    defstruct type: nil, topic: nil, tags: nil, value: nil
+  end
+
   use GenServer
 
   alias Telemetry.Metrics
@@ -33,7 +37,18 @@ defmodule TelemetryMetricsETS.Table do
 
   @spec to_list() :: [{DateTime.t(), Metrics.t()}]
   def to_list() do
-    :ets.tab2list(@name)
+    @name
+    |> :ets.tab2list()
+    |> Enum.map(&entity_to_report/1)
+  end
+
+  defp entity_to_report({{type, topic, tags}, value}) do
+    %Report{
+      type: type,
+      topic: topic,
+      tags: tags,
+      value: value
+    }
   end
 
   defp make_key(type, name, tags) do

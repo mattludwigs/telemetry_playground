@@ -10,46 +10,41 @@ defmodule Reports do
   """
   def print() do
     Table.to_list()
-    |> Enum.group_by(&topic_name_group/1, &topic_data/1)
+    |> Enum.group_by(& &1.topic)
     |> Enum.each(fn report -> print_report(report) end)
   end
 
-  defp print_report({report_name, report_data}) do
-    report_str =
-      """
-
-      #{IO.ANSI.cyan() <> report_name <> IO.ANSI.reset()}
-      """
-      |> append_report_data(report_data)
-
-    IO.puts(report_str)
+  defp print_report({topic_name, reports}) do
+    [
+      IO.ANSI.cyan(),
+      Enum.join(topic_name, "."),
+      IO.ANSI.reset(),
+      "\n"
+    ]
+    |> with_report_data(reports)
+    |> IO.puts()
   end
 
-  defp append_report_data(str, []), do: str
+  defp with_report_data(io_data, []), do: io_data
 
-  defp append_report_data(str, [report | rest]) do
-    new_str = str <> make_report(report)
+  defp with_report_data(io_data, [report | reports]) do
+    new_io_data = [
+      io_data,
+      report_type_header(report),
+      "#{inspect(report.value)}",
+      spacing(report.value),
+      "#{inspect(report.tags)}",
+      "\n"
+    ]
 
-    append_report_data(new_str, rest)
+    with_report_data(new_io_data, reports)
   end
 
-  defp make_report(%{type: :last_value} = report) do
-    "Last Value: #{report.value}\t#{inspect(report.tags)}\n"
-  end
+  defp report_type_header(%{type: :last_value}), do: "Last Value: "
+  defp report_type_header(%{type: :counter}), do: "Count: "
 
-  defp make_report(%{type: :counter} = report) do
-    "Count: #{report.value}\t\t#{inspect(report.tags)}\n"
-  end
-
-  defp topic_name_group({{_type, topic, _tags}, _value}) do
-    topic
-    |> Enum.take(length(topic) - 1)
-    |> Enum.join(".")
-  end
-
-  defp topic_data({{type, _topic, tags}, value}) do
-    %{tags: tags, value: value, type: type}
-  end
+  defp spacing(n) when n > 999, do: "\t"
+  defp spacing(n) when n < 1000, do: "\t\t"
 
   # todo: update opts to filter on topic, tags, types, and limit
   # and offset the number of data points we want to display. Also,
@@ -57,39 +52,32 @@ defmodule Reports do
   def chart(_opts \\ []) do
     Buffer.to_list()
     |> Enum.flat_map(fn {_ts, data} -> data end)
-    |> Enum.group_by(&topic_name_group/1, &topic_data/1)
-    |> Enum.each(fn {name, reports} ->
-      grouped_reports =
-        Enum.group_by(
-          reports,
-          fn %{type: type, tags: tags} -> {type, tags} end,
-          fn %{
-               value: value
-             } ->
-            value
-          end
-        )
+    |> Enum.group_by(& &1.topic)
+    |> Enum.each(&chart_reports/1)
+  end
 
-      for {{type, tags}, values} <- grouped_reports do
-        {:ok, chart} = Asciichart.plot(values, height: 9)
+  defp chart_reports({chart_title, reports}) do
+    grouped_reports = Enum.group_by(reports, &{&1.type, &1.tags}, & &1.value)
 
-        IO.puts([
-          "\n\t",
-          IO.ANSI.cyan(),
-          name,
-          IO.ANSI.reset(),
-          "\n",
-          chart,
-          "\n\t",
-          IO.ANSI.yellow(),
-          "Type: #{inspect(type)}",
-          IO.ANSI.reset(),
-          "\n\t",
-          IO.ANSI.light_green(),
-          "Tags: #{inspect(tags)}",
-          IO.ANSI.reset()
-        ])
-      end
-    end)
+    for {{type, tags}, values} <- grouped_reports do
+      {:ok, chart} = Asciichart.plot(values, height: 9)
+
+      IO.puts([
+        "\n\t",
+        IO.ANSI.cyan(),
+        Enum.join(chart_title, "."),
+        IO.ANSI.reset(),
+        "\n",
+        chart,
+        "\n\t",
+        IO.ANSI.yellow(),
+        "Type: #{inspect(type)}",
+        IO.ANSI.reset(),
+        "\n\t",
+        IO.ANSI.light_green(),
+        "Tags: #{inspect(tags)}",
+        IO.ANSI.reset()
+      ])
+    end
   end
 end
