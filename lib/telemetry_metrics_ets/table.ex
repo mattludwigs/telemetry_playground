@@ -3,9 +3,7 @@ defmodule TelemetryMetricsETS.Table do
 
   # module for handling common ETS table funcationlity
 
-  defmodule Report do
-    defstruct type: nil, topic: nil, tags: nil, value: nil
-  end
+  @type report() :: %{type: nil, topic: nil, tags: nil, value: nil}
 
   use GenServer
 
@@ -35,7 +33,10 @@ defmodule TelemetryMetricsETS.Table do
     GenServer.start_link(__MODULE__, args)
   end
 
-  @spec to_list() :: [{DateTime.t(), Metrics.t()}]
+  @doc """
+  Get a list of fields in the table
+  """
+  @spec to_list() :: [report()]
   def to_list() do
     @name
     |> :ets.tab2list()
@@ -43,7 +44,7 @@ defmodule TelemetryMetricsETS.Table do
   end
 
   defp entity_to_report({{type, topic, tags}, value}) do
-    %Report{
+    %{
       type: type,
       topic: topic,
       tags: tags,

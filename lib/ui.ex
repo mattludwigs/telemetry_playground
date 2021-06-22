@@ -1,4 +1,4 @@
-defmodule Reports do
+defmodule UI do
   @moduledoc """
   Print out reporting data for easily visualization
   """
@@ -6,8 +6,9 @@ defmodule Reports do
   alias TelemetryMetricsETS.{Table, Buffer}
 
   @doc """
-  Print the count metrics
+  Print the current view the metrics
   """
+  @spec print() :: :ok
   def print() do
     Table.to_list()
     |> Enum.group_by(& &1.topic)
@@ -49,14 +50,14 @@ defmodule Reports do
   # todo: update opts to filter on topic, tags, types, and limit
   # and offset the number of data points we want to display. Also,
   # allow to pass chart options through the charting lib.
-  def chart(_opts \\ []) do
+  def chart(opts \\ []) do
     Buffer.to_list()
     |> Enum.flat_map(fn {_ts, data} -> data end)
     |> Enum.group_by(& &1.topic)
-    |> Enum.each(&chart_reports/1)
+    |> Enum.each(fn report -> chart_reports(report, opts) end)
   end
 
-  defp chart_reports({chart_title, reports}) do
+  defp chart_reports({chart_title, reports}, _opts) do
     grouped_reports = Enum.group_by(reports, &{&1.type, &1.tags}, & &1.value)
 
     for {{type, tags}, values} <- grouped_reports do

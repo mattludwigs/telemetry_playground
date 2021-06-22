@@ -1,7 +1,9 @@
 defmodule TelemetryMetricsETS.Buffer do
+  @moduledoc false
+
   use GenServer
 
-  alias Telemetry.Metrics
+  alias TelemetryMetricsETS.Table
 
   @doc """
   Start the buffer
@@ -11,9 +13,12 @@ defmodule TelemetryMetricsETS.Buffer do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
   end
 
-  @spec insert_metrics([Metrics.t()]) :: :ok
-  def insert_metrics(metrics) do
-    GenServer.call(__MODULE__, {:insert_metrics, metrics})
+  @doc """
+  Insert a list of reports into the buffer
+  """
+  @spec insert_reports([Table.report()]) :: :ok
+  def insert_reports(reports) do
+    GenServer.call(__MODULE__, {:insert_reports, reports})
   end
 
   def to_list() do
@@ -30,9 +35,9 @@ defmodule TelemetryMetricsETS.Buffer do
   end
 
   @impl GenServer
-  def handle_call({:insert_metrics, data}, _from, state) do
+  def handle_call({:insert_reports, reports}, _from, state) do
     timestamp = DateTime.utc_now()
-    new_buffer = CircularBuffer.insert(state.buffer, {timestamp, data})
+    new_buffer = CircularBuffer.insert(state.buffer, {timestamp, reports})
 
     {:reply, :ok, %{state | buffer: new_buffer}}
   end
