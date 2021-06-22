@@ -24,16 +24,18 @@ defmodule TelemetryMetricsETS do
   end
 
   @doc """
-  Get the lastest recorded reports
+  Get the lastest recorded metric reports
   """
+  @spec get_lastest() :: [TelemetryMetricsETS.Table.report()]
   def get_lastest() do
     TelemetryMetricsETS.Table.to_list()
   end
 
   @doc """
-  Get the log of reports
+  List historicial the snapshots of the metric reports
   """
-  def get_log() do
+  @spec snapshots() :: [{DateTime.t(), TelemetryMetricsETS.Table.report()}]
+  def snapshots() do
     TelemetryMetricsETS.Buffer.to_list()
   end
 end

@@ -6,11 +6,11 @@ defmodule UI do
   alias TelemetryMetricsETS.{Table, Buffer}
 
   @doc """
-  Print the current view the metrics
+  Print the current view the metric reports
   """
   @spec print() :: :ok
   def print() do
-    Table.to_list()
+    TelemetryMetricsETS.get_lastest()
     |> Enum.group_by(& &1.topic)
     |> Enum.each(fn report -> print_report(report) end)
   end
@@ -47,11 +47,15 @@ defmodule UI do
   defp spacing(n) when n > 999, do: "\t"
   defp spacing(n) when n < 1000, do: "\t\t"
 
-  # todo: update opts to filter on topic, tags, types, and limit
-  # and offset the number of data points we want to display. Also,
-  # allow to pass chart options through the charting lib.
+  @doc """
+  Display a chart report of the metric reports
+  """
+  @spec chart(keyword()) :: :ok
   def chart(opts \\ []) do
-    Buffer.to_list()
+    # todo: update opts to filter on topic, tags, types, and limit
+    # and offset the number of data points we want to display. Also,
+    # allow to pass chart options through the charting lib.
+    TelemetryMetricsETS.snapshots()
     |> Enum.flat_map(fn {_ts, data} -> data end)
     |> Enum.group_by(& &1.topic)
     |> Enum.each(fn report -> chart_reports(report, opts) end)

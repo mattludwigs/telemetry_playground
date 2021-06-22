@@ -21,15 +21,20 @@ defmodule TelemetryMetricsETS.Buffer do
     GenServer.call(__MODULE__, {:insert_reports, reports})
   end
 
+  @doc """
+  Turn the buffer into a list
+  """
+  @spec to_list() :: [{DateTime.t(), Table.report()}]
   def to_list() do
     GenServer.call(__MODULE__, :to_list)
   end
 
   @impl GenServer
   def init(args) do
-    buffer_size = Keyword.get(args, :buffer_size, 250)
-
-    buffer = CircularBuffer.new(buffer_size)
+    buffer =
+      args
+      |> Keyword.get(:buffer_size, 250)
+      |> CircularBuffer.new()
 
     {:ok, %{buffer: buffer}}
   end
