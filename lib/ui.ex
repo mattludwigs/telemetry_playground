@@ -3,8 +3,6 @@ defmodule UI do
   Print out reporting data for easily visualization
   """
 
-  alias TelemetryMetricsETS.{Table, Buffer}
-
   @doc """
   Print the current view the metric reports
   """
@@ -57,15 +55,40 @@ defmodule UI do
     # allow to pass chart options through the charting lib.
     TelemetryMetricsETS.snapshots()
     |> Enum.flat_map(fn {_ts, data} -> data end)
+    |> apply_filters(opts)
     |> Enum.group_by(& &1.topic)
     |> Enum.each(fn report -> chart_reports(report, opts) end)
+  end
+
+  defp apply_filters(data, []), do: data
+
+  defp apply_filters(data, [{:offset, offset} | filters]) do
+    data
+    |> Enum.drop(offset)
+    |> apply_filters(filters)
+  end
+
+  defp apply_filters(data, [{:order, :desc} | filters]) do
+    data
+    |> Enum.reverse()
+    |> apply_filters(filters)
+  end
+
+  defp apply_filters(data, [{:limit, limit} | filters]) do
+    data
+    |> Enum.take(limit)
+    |> apply_filters(filters)
+  end
+
+  defp apply_filters(data, [_not_supported | filters]) do
+    apply_filters(data, filters)
   end
 
   defp chart_reports({chart_title, reports}, _opts) do
     grouped_reports = Enum.group_by(reports, &{&1.type, &1.tags}, & &1.value)
 
     for {{type, tags}, values} <- grouped_reports do
-      {:ok, chart} = Asciichart.plot(values, height: 9)
+      {:ok, chart} = Asciichart.plot(values, height: 10)
 
       IO.puts([
         "\n\t",
