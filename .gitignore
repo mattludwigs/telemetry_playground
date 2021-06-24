@@ -21,6 +21,7 @@ erl_crash.dump
 
 # Ignore package tarball (built via "mix hex.build").
 telemetry_playground-*.tar
+nerves_metrics-*.tar
 
 
 # Temporary files for e.g. tests

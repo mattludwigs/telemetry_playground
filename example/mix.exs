@@ -24,7 +24,7 @@ defmodule Example.MixProject do
     [
       {:telemetry, "~> 0.4.3"},
       {:telemetry_metrics, "~> 0.6.0"},
-      {:telemetry_playground, path: "../"}
+      {:nerves_metrics, path: "../"}
     ]
   end
 end

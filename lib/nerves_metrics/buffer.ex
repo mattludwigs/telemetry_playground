@@ -1,9 +1,9 @@
-defmodule TelemetryMetricsETS.Buffer do
+defmodule NervesMetrics.Buffer do
   @moduledoc false
 
   use GenServer
 
-  alias TelemetryMetricsETS.Table
+  alias NervesMetrics.Table
 
   @doc """
   Start the buffer

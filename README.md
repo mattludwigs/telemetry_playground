@@ -1,57 +1,15 @@
-# TelemetryPlayground
+# NervesMetrics 
 
-Telemetry is made up of a few items:
+A library that is useful for localized observability. 
 
-1. Telemetry events
-2. Handlers
-3. Metrics
-4. Reporters
-5. Aggregator service
+### Features
 
-## Telemetry Events
+- Telemetry support
+- Time series snapshots of metrics
+- API for local data visualization
 
-These are discrete measurements under some namespace, better known as an
-event. These provide not additional information in regards to meaning other
-than something happened and some data as to measure what happend.
+## Other naming ideas
 
-## Handlers
-
-Handlers are functions that allow the consumer of a telemetry API to do
-something with the event. You attach handlers via the `:telemetry.attach/4`
-or `:telemetry.attach_many/4` function calls.
-
-## Metrics
-
-Using the library `:telemetry_metrics` we are provided with a community
-specification of metrics. There are five:
-
-1. Counter - keep a count of a some event
-2. Sum - total sum of some measurement
-3. Last Value - the last value of some event measurement
-4. Summary - a generalized metrics for doing statisticial summaries
-5. Distrubtion - a way to bucket event measuresments
-
-An important note about metetrics is that these do nothing by themselves.
-They are only a common interface (provided as structs) for reporters to
-handle.
-
-## Reporters
-
-Reporters are modules that adhere to the reporter specification outlined in
-`:telemetry_metrics`. Their job is to take a list of metrics to listen for
-and when an event happens to take the metric and report to some aggregation
-service. This service can be the filesystem, a GenServer, a cloud server, a
-local server, another program, or whatever. Normally, a reporter will take
-in the metric and translate it to the serivce API. Reporters do not need to
-support every metric.
-
-## Aggregator service
-
-This is the peice of software that has an API for the report to send
-information to and allows a user to visualize telemetry meterics in
-some form. A service is supported through a specific telemetry reporter.
-
-## Example
-
-The example application provides a way to consume the `:telemetry_playground` 
-library.
+- [Mobius](https://www.marvel.com/characters/agent-mobius/in-comics)
+- [Aion](https://en.wikipedia.org/wiki/Aion_(deity))
+- [Ewok](https://en.wikipedia.org/wiki/Ewok)

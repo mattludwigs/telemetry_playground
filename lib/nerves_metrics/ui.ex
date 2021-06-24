@@ -1,4 +1,4 @@
-defmodule UI do
+defmodule NervesMetrics.UI do
   @moduledoc """
   Print out reporting data for easily visualization
   """
@@ -8,7 +8,7 @@ defmodule UI do
   """
   @spec print() :: :ok
   def print() do
-    TelemetryMetricsETS.get_lastest()
+    NervesMetrics.get_lastest()
     |> Enum.group_by(& &1.topic)
     |> Enum.each(fn report -> print_report(report) end)
   end
@@ -53,7 +53,7 @@ defmodule UI do
     # todo: update opts to filter on topic, tags, types, and limit
     # and offset the number of data points we want to display. Also,
     # allow to pass chart options through the charting lib.
-    TelemetryMetricsETS.snapshots()
+    NervesMetrics.snapshots()
     |> Enum.flat_map(fn {_ts, data} -> data end)
     |> apply_filters(opts)
     |> Enum.group_by(& &1.topic)
@@ -88,7 +88,7 @@ defmodule UI do
     grouped_reports = Enum.group_by(reports, &{&1.type, &1.tags}, & &1.value)
 
     for {{type, tags}, values} <- grouped_reports do
-      {:ok, chart} = Asciichart.plot(values, height: 10)
+      {:ok, chart} = NervesMetrics.Asciichart.plot(values, height: 10)
 
       IO.puts([
         "\n\t",

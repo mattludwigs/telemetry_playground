@@ -1,9 +1,9 @@
-defmodule TelemetryPlayground.MixProject do
+defmodule NervesMetrics.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :telemetry_playground,
+      app: :nerves_metrics,
       version: "0.1.0",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,

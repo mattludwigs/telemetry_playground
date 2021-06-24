@@ -1,9 +1,9 @@
-defmodule TelemetryMetricsETS.Event do
+defmodule NervesMetrics.Event do
   # I like having this stuff outside the process stuff
   # as we can test things better
   require Logger
-  alias Telemetry.Metrics.{Counter, LastValue}
-  alias TelemetryMetricsETS.Table
+  alias Telemetry.Metrics.Counter
+  alias NervesMetrics.Table
 
   @doc """
   Handle a telemetry event

@@ -1,4 +1,4 @@
-defmodule TelemetryMetricsETS do
+defmodule NervesMetrics do
   @moduledoc """
   Reporter for localized telemetry metrics
   """
@@ -15,9 +15,9 @@ defmodule TelemetryMetricsETS do
   @impl Supervisor
   def init(args) do
     children = [
-      {TelemetryMetricsETS.Buffer, args},
-      {TelemetryMetricsETS.Table, args},
-      {TelemetryMetricsETS.Reporter, args}
+      {NervesMetrics.Buffer, args},
+      {NervesMetrics.Table, args},
+      {NervesMetrics.Reporter, args}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -26,16 +26,16 @@ defmodule TelemetryMetricsETS do
   @doc """
   Get the lastest recorded metric reports
   """
-  @spec get_lastest() :: [TelemetryMetricsETS.Table.report()]
+  @spec get_lastest() :: [NervesMetrics.Table.report()]
   def get_lastest() do
-    TelemetryMetricsETS.Table.to_list()
+    NervesMetrics.Table.to_list()
   end
 
   @doc """
   List historicial the snapshots of the metric reports
   """
-  @spec snapshots() :: [{DateTime.t(), TelemetryMetricsETS.Table.report()}]
+  @spec snapshots() :: [{DateTime.t(), NervesMetrics.Table.report()}]
   def snapshots() do
-    TelemetryMetricsETS.Buffer.to_list()
+    NervesMetrics.Buffer.to_list()
   end
 end

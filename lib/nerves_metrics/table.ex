@@ -1,4 +1,4 @@
-defmodule TelemetryMetricsETS.Table do
+defmodule NervesMetrics.Table do
   @moduledoc false
 
   # module for handling common ETS table funcationlity

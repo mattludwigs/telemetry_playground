@@ -18,7 +18,7 @@ defmodule Example.Application do
     ]
 
     children = [
-      {TelemetryMetricsETS, metrics: metrics},
+      {NervesMetrics, metrics: metrics},
       {Example, []}
     ]
 
