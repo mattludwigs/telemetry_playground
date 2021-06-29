@@ -3,109 +3,75 @@ defmodule NervesMetrics.UI do
   Print out reporting data for easily visualization
   """
 
-  @doc """
-  Print the current view the metric reports
-  """
-  @spec print() :: :ok
-  def print() do
-    NervesMetrics.get_lastest()
-    |> Enum.group_by(& &1.topic)
-    |> Enum.each(fn report -> print_report(report) end)
+  alias NervesMetrics.Metrics
+
+  def metrics() do
+    Metrics.get_metrics()
+    |> Enum.group_by(fn {name, _, _, tags} -> {name, Map.keys(tags)} end)
+    |> Enum.each(&print_metrics_table/1)
   end
 
-  defp print_report({topic_name, reports}) do
-    [
-      IO.ANSI.cyan(),
-      Enum.join(topic_name, "."),
-      IO.ANSI.reset(),
-      "\n"
-    ]
-    |> with_report_data(reports)
+  defp print_metrics_table({{name, labels}, metrics}) do
+    rows =
+      for {_name, type, value, meta} <- metrics do
+        row =
+          for label <- labels do
+            meta[label]
+          end
+
+          row ++ [type, value]
+      end
+    new_labels = labels ++ [:type, :value]
+
+    TableRex.quick_render!(rows, new_labels, Enum.join(name, "."))
     |> IO.puts()
   end
 
-  defp with_report_data(io_data, []), do: io_data
-
-  defp with_report_data(io_data, [report | reports]) do
-    new_io_data = [
-      io_data,
-      report_type_header(report),
-      "#{inspect(report.value)}",
-      spacing(report.value),
-      "#{inspect(report.tags)}",
-      "\n"
-    ]
-
-    with_report_data(new_io_data, reports)
+  def print_events(table) do
+    table
+    |> NervesMetrics.Events.Table.get_events()
+    |> make_event_table(table)
   end
 
-  defp report_type_header(%{type: :last_value}), do: "Last Value: "
-  defp report_type_header(%{type: :counter}), do: "Count: "
+  def make_events_table([]), do: ""
 
-  defp spacing(n) when n > 999, do: "\t"
-  defp spacing(n) when n < 1000, do: "\t\t"
+  def make_event_table(events, table) do
+    # This going to be bad as we ulimate iterate the list twice
+    # There are better solutions but haven't had time to explore
+    # those yet.
+    labels =
+      Enum.reduce(events, [], fn event, labels ->
+        data_labels_for_event =
+          event.tags
+          |> Map.merge(event.measurements)
+          |> Map.keys()
 
-  @doc """
-  Display a chart report of the metric reports
-  """
-  @spec chart(keyword()) :: :ok
-  def chart(opts \\ []) do
-    # todo: update opts to filter on topic, tags, types, and limit
-    # and offset the number of data points we want to display. Also,
-    # allow to pass chart options through the charting lib.
-    NervesMetrics.snapshots()
-    |> Enum.flat_map(fn {_ts, data} -> data end)
-    |> apply_filters(opts)
-    |> Enum.group_by(& &1.topic)
-    |> Enum.each(fn report -> chart_reports(report, opts) end)
+        Enum.uniq(labels ++ data_labels_for_event)
+      end)
+
+    labels = [:timestamp, :name | labels]
+    rows = make_rows(events, labels)
+
+    TableRex.quick_render!(rows, labels, "#{table}")
+    |> IO.puts()
   end
 
-  defp apply_filters(data, []), do: data
-
-  defp apply_filters(data, [{:offset, offset} | filters]) do
-    data
-    |> Enum.drop(offset)
-    |> apply_filters(filters)
+  defp make_rows(events, labels) do
+    Enum.reduce(events, [], fn event, rs ->
+      rs ++ [make_row(event, labels)]
+    end)
   end
 
-  defp apply_filters(data, [{:order, :desc} | filters]) do
-    data
-    |> Enum.reverse()
-    |> apply_filters(filters)
-  end
+  defp make_row(event, labels) do
+    row =
+      for label <- labels do
+        if label == :name do
+          "#{inspect(event.name)}"
+        else
+          event[label] || event.tags[label] || event.measurements[label]
+        end
+      end
 
-  defp apply_filters(data, [{:limit, limit} | filters]) do
-    data
-    |> Enum.take(limit)
-    |> apply_filters(filters)
-  end
-
-  defp apply_filters(data, [_not_supported | filters]) do
-    apply_filters(data, filters)
-  end
-
-  defp chart_reports({chart_title, reports}, _opts) do
-    grouped_reports = Enum.group_by(reports, &{&1.type, &1.tags}, & &1.value)
-
-    for {{type, tags}, values} <- grouped_reports do
-      {:ok, chart} = NervesMetrics.Asciichart.plot(values, height: 10)
-
-      IO.puts([
-        "\n\t",
-        IO.ANSI.cyan(),
-        Enum.join(chart_title, "."),
-        IO.ANSI.reset(),
-        "\n",
-        chart,
-        "\n\t",
-        IO.ANSI.yellow(),
-        "Type: #{inspect(type)}",
-        IO.ANSI.reset(),
-        "\n\t",
-        IO.ANSI.light_green(),
-        "Tags: #{inspect(tags)}",
-        IO.ANSI.reset()
-      ])
-    end
+    row
   end
 end

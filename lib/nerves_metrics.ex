@@ -5,6 +5,8 @@ defmodule NervesMetrics do
 
   use Supervisor
 
+  alias NervesMetrics.{Events, Metrics}
+
   @doc """
   Start the reporter
   """
@@ -14,28 +16,20 @@ defmodule NervesMetrics do
 
   @impl Supervisor
   def init(args) do
+    events = Keyword.get(args, :events, [])
+    metrics = Keyword.get(args, :metrics, [])
+
+    Events.init(events)
+    Metrics.Table.init(metrics)
+
     children = [
-      {NervesMetrics.Buffer, args},
-      {NervesMetrics.Table, args},
       {NervesMetrics.Reporter, args}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  @doc """
-  Get the lastest recorded metric reports
-  """
-  @spec get_lastest() :: [NervesMetrics.Table.report()]
-  def get_lastest() do
-    NervesMetrics.Table.to_list()
-  end
-
-  @doc """
-  List historicial the snapshots of the metric reports
-  """
-  @spec snapshots() :: [{DateTime.t(), NervesMetrics.Table.report()}]
-  def snapshots() do
-    NervesMetrics.Buffer.to_list()
+  def events_for(event_table) do
+    NervesMetrics.UI.print_events(event_table)
   end
 end

@@ -1,9 +1,14 @@
-defmodule NervesMetrics.Event do
+defmodule NervesMetrics.Metrics do
   # I like having this stuff outside the process stuff
   # as we can test things better
   require Logger
-  alias Telemetry.Metrics.Counter
-  alias NervesMetrics.Table
+
+  alias NervesMetrics.Metrics.Table
+  alias Telemetry.Metrics.{Counter, LastValue}
+
+  def get_metrics() do
+    Table.get_entries()
+  end
 
   @doc """
   Handle a telemetry event
@@ -15,8 +20,7 @@ defmodule NervesMetrics.Event do
       try do
         if value = keep?(metric, metadata) && extract_measurement(metric, measurements, metadata) do
           tags = extract_tags(metric, metadata)
-
-          Table.insert_metric(metric, value, tags)
+          update_metrics(metric, value, tags)
         end
       rescue
         e ->
@@ -26,17 +30,19 @@ defmodule NervesMetrics.Event do
     end
   end
 
+  defp update_metrics(%Counter{} = metric, _value, tags) do
+    Table.inc(metric.name, tags)
+  end
+
+  defp update_metrics(%LastValue{} = metric, value, tags) do
+    Table.insert_metric(metric.name, :last_value, value, tags)
+  end
+
   defp keep?(%{keep: keep}, metadata) when keep != nil, do: keep.(metadata)
   defp keep?(_metric, _metadata), do: true
 
-  defp extract_measurement(%Counter{} = metric, measurements, metadata) do
-    case get_measurement(metric, measurements, metadata) do
-      nil ->
-        1
-
-      measurement ->
-        measurement
-    end
+  defp extract_measurement(%Counter{}, _measurements, _metadata) do
+    1
   end
 
   defp extract_measurement(metric, measurements, metadata) do
