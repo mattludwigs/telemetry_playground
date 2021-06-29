@@ -9,16 +9,25 @@ defmodule Example.Application do
 
   @impl true
   def start(_type, _args) do
-    # define what meterics we want to track
+    # Metrics are items that
     metrics = [
-      Metrics.last_value("connectivity.internet.end.duration", tags: [:ifname]),
-      Metrics.last_value("connectivity.disconnected.end.duration", tags: [:ifname]),
-      Metrics.counter("connectivity.disconnected.end.duration", tags: [:ifname]),
-      Metrics.counter("connectivity.internet.end.duration", tags: [:ifname])
+      Metrics.last_value("vm.memory.total"),
+      Metrics.last_value("vm.memory.atom")
+    ]
+
+    events = [
+      %{
+        table: :vm_memory,
+        events: [[:vm, :memory]]
+      },
+      %{
+        table: :vm_system_counts,
+        events: [[:vm, :system_counts]]
+      }
     ]
 
     children = [
-      {NervesMetrics, metrics: metrics},
+      {NervesMetrics, metrics: metrics, events: events},
       {Example, []}
     ]
 

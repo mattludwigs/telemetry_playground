@@ -2,7 +2,7 @@ defmodule NervesMetrics.Reporter do
   @moduledoc false
 
   use GenServer
-  alias NervesMetrics.{Buffer, Event, Table}
+  alias NervesMetrics.Metrics
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(args) do
@@ -16,7 +16,7 @@ defmodule NervesMetrics.Reporter do
 
     for {event, metrics} <- Enum.group_by(metrics, & &1.event_name) do
       id = {__MODULE__, event, self()}
-      :telemetry.attach(id, event, &Event.handle_event/4, metrics)
+      :telemetry.attach(id, event, &Metrics.handle_event/4, metrics)
     end
 
     state = %{poll_interval: poll_interval}
@@ -32,7 +32,7 @@ defmodule NervesMetrics.Reporter do
 
   @impl GenServer
   def handle_info(:poll, state) do
-    Buffer.insert_reports(Table.to_list())
+    # Buffer.insert_reports(Table.to_list())
 
     {:noreply, poll(state)}
   end

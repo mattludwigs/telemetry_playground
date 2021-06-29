@@ -23,7 +23,7 @@ defmodule NervesMetrics.MixProject do
     [
       {:telemetry, "~> 0.4.3"},
       {:telemetry_metrics, "~> 0.6.0"},
-      {:circular_buffer, "~> 0.4.0"}
+      {:table_rex, "~> 3.1"}
     ]
   end
 end
